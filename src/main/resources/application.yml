@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: voltpay-reader
+  liquibase:
+    default-schema: read
+  datasource:
+    url: jdbc:postgresql://localhost:5432/read_db
+    username: user
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: HikariCP
+      maximum-pool-size: 50
+  kafka:
+    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094,localhost:9095
+    properties:
+      client:
+        dns:
+          lookup: use_all_dns_ips
+    consumer:
+      group-id: reader-group
+      max-poll-records: 50
+      fetch-max-wait: 500
+      fetch-min-size: 1
+      enable-auto-commit: false
+      threads: 10
+    listener:
+      type: record
