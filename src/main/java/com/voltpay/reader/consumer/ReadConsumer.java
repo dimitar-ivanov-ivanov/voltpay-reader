@@ -2,51 +2,61 @@ package com.voltpay.reader.consumer;
 
 import com.voltpay.reader.entities.Transaction;
 import com.voltpay.reader.pojo.ReadEvent;
+import com.voltpay.reader.repositories.IdempotencyRepository;
 import com.voltpay.reader.repositories.TransactionRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Slf4j
+// If Dead Letter consumption is enabled the Read Consumer should be disabled otherwise we could end up in an infinite loop of
+// Read Consumer -> publish to DLT -> DLT publish to Read Consumer -> continue until we run out of memory
+@ConditionalOnProperty(name = "kafka.dlt.enabled", havingValue = "false")
 public class ReadConsumer {
 
     private TransactionRepository transactionRepository;
 
+    private IdempotencyRepository idempotencyRepository;
+
     @Transactional
     @KafkaListener(topics = "read-topic", containerFactory = "kafkaListenerContainerFactory")
-    public void processBatchOfMessages(List<ConsumerRecord<String, ReadEvent>> records) {
+    public void processBatchOfMessages(ReadEvent event) {
+        if (!isValid(event)) {
+            log.warn("Invalid event, won't process");
+            return;
+        }
 
-        for(ConsumerRecord<String, ReadEvent> record : records) {
-            if (!isValid(record)) {
-                continue;
-            }
-            ReadEvent event = record.value();
+        try {
+            // throws an exception when trying to persist a duplicate record
+            idempotencyRepository.insertNew(event.getMessageId(), event.getCreatedAt().toLocalDate());
+
             Transaction transaction = new Transaction(event.getId(), event.getCreatedAt(), event.getUpdatedAt(), event.getAmount(), event.getStatus(),
                 event.getCurrency(), event.getCustId(), event.getType(), event.getComment(), event.getVersion());
 
-            try {
-                transactionRepository.save(transaction);
-            } catch (Exception ex) {
-                // send to dead letter
-            }
+            transactionRepository.save(transaction);
+            log.info("Successfully persisted transaction {}", event.getId());
+        } catch (Exception ex) {
+            log.warn("Error while trying to persist transaction {}", event.getId());
+            // Don't send to dead letter here as it will retry and publish the same event twice
+            //deadLetterTemplate.send("read-dlt", event.getCustId().toString(), event);
+
+            // Rethrow exception to trigger transaction rollback.
+            throw ex;
         }
     }
 
-    private boolean isValid(ConsumerRecord<String, ReadEvent> record) {
-        String key = record.key();
-        Object value = record.value();
-
+    private boolean isValid(ReadEvent event) {
         // Disregard warmup events
-        if (key == null || value == null || value.getClass() != ReadEvent.class) {
+        if (event == null || event.getMessageId() == null) {
             return false;
         }
-
-        ReadEvent event = (ReadEvent) value;
 
         if (event.getId() == null ||
             event.getAmount() == null ||

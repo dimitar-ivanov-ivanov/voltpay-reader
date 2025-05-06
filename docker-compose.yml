@@ -5,13 +5,13 @@ services:
     image: postgres:16
     container_name: postgres-reader
     environment:
-      POSTGRES_DB: write_db
+      POSTGRES_DB: read_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - readData:/var/lib/postgresql/data
 
 volumes:
-  pgdata:
+  readData:

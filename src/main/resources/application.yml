@@ -4,7 +4,7 @@ spring:
   liquibase:
     default-schema: read
   datasource:
-    url: jdbc:postgresql://localhost:5432/read_db
+    url: jdbc:postgresql://localhost:5433/read_db
     username: user
     password: password
     driver-class-name: org.postgresql.Driver
@@ -19,10 +19,19 @@ spring:
           lookup: use_all_dns_ips
     consumer:
       group-id: reader-group
+      dlt-group-id: read-dlt-consumer-group
       max-poll-records: 50
       fetch-max-wait: 500
       fetch-min-size: 1
       enable-auto-commit: false
       threads: 10
+      deadLetterThreads: 4
     listener:
-      type: record
+      type: single
+
+server:
+  port: 8081
+
+kafka:
+   dlt:
+     enabled: false

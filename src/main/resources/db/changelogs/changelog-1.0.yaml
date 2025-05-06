@@ -1,0 +1,51 @@
+databaseChangeLog:
+- changeSet:
+    id: 1
+    author: dimitar_ivanov
+    changes:
+      - sql:
+          sql: |
+            CREATE TABLE IF NOT EXISTS read.transaction (
+              id VARCHAR(30),
+              amount NUMERIC(20, 6),
+              status INTEGER,
+              currency VARCHAR(3),
+              cust_id BIGINT,
+              type VARCHAR(3),
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              comment VARCHAR(300),
+              version INTEGER,
+              PRIMARY KEY (id, created_at)
+              ) PARTITION BY RANGE (created_at);
+
+- changeSet:
+    id: 2
+    author: dimitar_ivanov
+    changes:
+      - createTable:
+          columns:
+            - column:
+                name: id
+                type: varchar(255)
+                constraints:
+                  primaryKey: true
+            - column:
+                name: date
+                type: date
+          remarks: table for storing idempotency
+          schemaName: read
+          tableName: idempotency
+- changeSet:
+    id: 3
+    author: dimitar_ivanov
+    changes:
+      - sql:
+          sql: |
+            SELECT partman.create_parent(
+              p_parent_table := 'read.transaction',
+              p_control := 'created_at',
+              p_type := 'range',
+              p_interval := '1 months',
+              p_premake := 2
+            );          

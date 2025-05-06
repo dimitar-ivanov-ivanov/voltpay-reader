@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @Data
 public class ReadEvent {
 
+    private String messageId;
+
     private String id;
 
     private LocalDateTime createdAt;
