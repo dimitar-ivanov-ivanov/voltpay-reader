@@ -17,7 +17,7 @@ import java.time.LocalDate;
 public class Idempotency {
 
     @Id
-    private String messageId;
+    private String id;
 
     private LocalDate date;
 }

@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '3.4.5'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.liquibase.gradle' version '2.2.0'
+	id 'checkstyle'
 }
 
 group = 'com.voltpay'
@@ -18,6 +19,14 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+}
+
+checkstyle {
+	toolVersion = '10.12.1'
+	configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+	maxErrors = 0
+	maxWarnings = 0
+	ignoreFailures = false
 }
 
 liquibase {
@@ -52,12 +61,17 @@ dependencies {
 	// kafka
 	implementation("org.springframework.kafka:spring-kafka:3.3.4")
 
-
 	// liquibase dependencies
 	implementation 'org.postgresql:postgresql:42.7.1'
 	liquibaseRuntime 'org.liquibase:liquibase-core:4.25.1'
 	liquibaseRuntime 'org.postgresql:postgresql:42.7.1'
 	liquibaseRuntime 'info.picocli:picocli:4.7.5'
+
+	// test container for Postgres
+	testImplementation("org.testcontainers:postgresql:1.21.0")
+
+	// test container for Kafka
+	testImplementation("org.testcontainers:kafka:1.21.0")
 }
 
 tasks.named('test') {

@@ -1,5 +1,6 @@
-package com.voltpay.reader.consumer;
+package com.voltpay.reader.unit.consumer;
 
+import com.voltpay.reader.consumer.DeadLetterConsumer;
 import com.voltpay.reader.pojo.ReadEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

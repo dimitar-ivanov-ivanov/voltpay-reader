@@ -1,5 +1,6 @@
-package com.voltpay.reader.consumer;
+package com.voltpay.reader.unit.consumer;
 
+import com.voltpay.reader.consumer.ReadConsumer;
 import com.voltpay.reader.entities.Transaction;
 import com.voltpay.reader.pojo.ReadEvent;
 import com.voltpay.reader.repositories.IdempotencyRepository;
@@ -13,20 +14,22 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static reactor.core.publisher.Mono.when;
+import static org.mockito.Mockito.when;
 
 class ReadConsumerTest {
 
@@ -48,11 +51,14 @@ class ReadConsumerTest {
 
     private IdempotencyRepository idempotencyRepository;
 
+    private PlatformTransactionManager transactionManager;
+
     @BeforeEach
     void setUp() {
         transactionRepository = mock(TransactionRepository.class);
         idempotencyRepository = mock(IdempotencyRepository.class);
-        readConsumer = new ReadConsumer(transactionRepository, idempotencyRepository);
+        transactionManager = mock(PlatformTransactionManager.class);
+        readConsumer = new ReadConsumer(transactionRepository, idempotencyRepository, transactionManager);
     }
 
     @Test
@@ -63,6 +69,7 @@ class ReadConsumerTest {
         // THEN
         verifyNoInteractions(idempotencyRepository);
         verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(transactionManager);
     }
 
     @ParameterizedTest
@@ -74,22 +81,28 @@ class ReadConsumerTest {
         // THEN
         verifyNoInteractions(idempotencyRepository);
         verifyNoInteractions(transactionRepository);
+        verifyNoInteractions(transactionManager);
     }
 
     @Test
     public void given_exceptionOnIdempotency_when_processMessage_then_dontPersist() {
         // GIVEN
         ReadEvent event = buildReadEvent();
+        TransactionStatus status = new SimpleTransactionStatus();
+        when(transactionManager.getTransaction(any())).thenReturn(status);
         doThrow(RuntimeException.class).when(idempotencyRepository).insertNew(event.getMessageId(), event.getCreatedAt().toLocalDate());
         // WHEN
+        readConsumer.processMessage(event);
         // THEN
-        assertThrows(RuntimeException.class, () -> readConsumer.processMessage(event));
         verifyNoInteractions(transactionRepository);
+        verify(transactionManager).rollback(status);
     }
 
     @Test
     public void given_validEvent_when_processMessage_then_process() {
         // GIVEN
+        TransactionStatus status = new SimpleTransactionStatus();
+        when(transactionManager.getTransaction(any())).thenReturn(status);
         ReadEvent event = buildReadEvent();
         // WHEN
         readConsumer.processMessage(event);
@@ -110,6 +123,8 @@ class ReadConsumerTest {
         assertEquals(event.getType(), trn.getType());
         assertEquals(event.getComment(), trn.getComment());
         assertEquals(event.getVersion(), trn.getVersion());
+
+        verify(transactionManager).commit(status);
     }
 
     private static Stream<Arguments> invalidEvents() {

@@ -100,3 +100,10 @@ The Kafka consumer consumers messages one by one.
 - ``SELECT * FROM pg_available_extensions WHERE name = 'pg_partman';`` to verify
 
 # How to Run 
+
+# Ideas that were dropped 
+
+1. **Using @Transactional on the Read Consumer**
+   - This rolls back the transaction during integration testing  
+   - There we attemps made with @Rollback(false) and @Commit, but nothing worked
+   - at the end I resorted to using PlatformTransactionManager and manually commit
