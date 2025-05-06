@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.voltpay.reader.pojo.ReadEvent;
-import lombok.Locked;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -24,9 +23,6 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -90,18 +86,23 @@ public class KafkaConfig {
         factory.setBatchListener(false);
         factory.setConcurrency(consumerThreads);
 
-        // Configure retry
         factory.setCommonErrorHandler(errorHandler(kafkaTemplate));
 
         return factory;
     }
 
+    /**
+     * Error handler which publishes the event to dead letter after retrying once.
+     * Retry occurs after 1 second of failure.
+     *
+     * @param template template for publishing
+     * @return error handler
+     */
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<String, ReadEvent> template) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
             (record, exception) -> new TopicPartition("read-dlt", record.partition()));
 
-        // 1000ms interval, 1 retry
         BackOff backOff = new FixedBackOff(1000L, 1);
 
         return new DefaultErrorHandler(recoverer, backOff);

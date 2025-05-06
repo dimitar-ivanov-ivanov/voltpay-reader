@@ -4,14 +4,18 @@ import com.voltpay.reader.entities.Transaction;
 import com.voltpay.reader.pojo.ReadEvent;
 import com.voltpay.reader.repositories.IdempotencyRepository;
 import com.voltpay.reader.repositories.TransactionRepository;
+import com.voltpay.reader.utils.Currency;
+import com.voltpay.reader.utils.TrnStatus;
+import com.voltpay.reader.utils.TrnType;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -21,13 +25,19 @@ import org.springframework.stereotype.Service;
 @ConditionalOnProperty(name = "kafka.dlt.enabled", havingValue = "false")
 public class ReadConsumer {
 
+    private static final List<String> CURRENCIES = Arrays.stream(Currency.values()).map(Enum::toString).toList();
+
+    private static final List<Integer> STATUS_VALUES = Arrays.stream(TrnStatus.values()).map(TrnStatus::getValue).toList();
+
+    private static final List<String> TYPES = Arrays.stream(TrnType.values()).map(Enum::toString).toList();
+
     private TransactionRepository transactionRepository;
 
     private IdempotencyRepository idempotencyRepository;
 
     @Transactional
     @KafkaListener(topics = "read-topic", containerFactory = "kafkaListenerContainerFactory")
-    public void processBatchOfMessages(ReadEvent event) {
+    public void processMessage(ReadEvent event) {
         if (!isValid(event)) {
             log.warn("Invalid event, won't process");
             return;
@@ -48,6 +58,7 @@ public class ReadConsumer {
             //deadLetterTemplate.send("read-dlt", event.getCustId().toString(), event);
 
             // Rethrow exception to trigger transaction rollback.
+            // If we skip this we will persist idempotency for events that we DIDN'T process
             throw ex;
         }
     }
@@ -62,9 +73,16 @@ public class ReadConsumer {
             event.getAmount() == null ||
             event.getCreatedAt() == null ||
             event.getCurrency() == null ||
-            event.getCustId() == null) {
+            event.getCustId() == null ||
+            event.getStatus() == null ||
+            event.getType() == null ||
+            !CURRENCIES.contains(event.getCurrency()) ||
+            !STATUS_VALUES.contains(event.getStatus()) ||
+            !TYPES.contains(event.getType())) {
+
             return false;
         }
+
 
         return true;
     }
