@@ -19,5 +19,6 @@
         <module name="Indentation">
             <property name="caseIndent" value="2"/>
         </module>
+        <module name="UnusedImports"/>
     </module>
 </module>

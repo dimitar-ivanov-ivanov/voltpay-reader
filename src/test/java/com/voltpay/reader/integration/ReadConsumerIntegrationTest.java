@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertNotNull;
@@ -118,15 +117,21 @@ public class ReadConsumerIntegrationTest {
     }
 
     @Test
-    public void given_duplicateIdempotency_when_processMessage_then_throwException() {
+    public void given_duplicateIdempotency_when_processMessage_then_onlyPersistOnce() {
         // GIVEN
         ReadEvent event = buildReadEvent();
-        AtomicReference<Exception> consumerException = new AtomicReference<>();
         // WHEN
         kafkaTemplate.send("read-topic", CUST_ID.toString(), event);
         kafkaTemplate.send("read-topic", CUST_ID.toString(), event);
         // THEN
-       // TO DO: Figure out how to test that we threw an async exception
+        await()
+            .atMost(10, TimeUnit.SECONDS)
+            .pollInterval(2, TimeUnit.SECONDS).untilAsserted(() -> {
+                assertEquals(1, idempotencyRepository.count());
+                Optional<Idempotency> idempotency = idempotencyRepository.findById(event.getMessageId());
+                assertNotNull(idempotency.get());
+                Assert.assertEquals(event.getMessageId(), idempotency.get().getId());
+            });
     }
 
     @Test
