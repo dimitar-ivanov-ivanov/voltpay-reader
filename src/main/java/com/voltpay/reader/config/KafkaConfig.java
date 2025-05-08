@@ -47,7 +47,6 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.deadLetterThreads}")
     private Integer deadLetterThreads;
 
-
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> props = new HashMap<>();

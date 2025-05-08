@@ -1,0 +1,20 @@
+scalar BigDecimal
+scalar Long
+scalar LocalDateTime
+
+type Query {
+    transactionByCustId(custId: Long): [Transaction]
+    allTransactions: [Transaction]
+}
+
+type Transaction {
+    custId: Long
+    createdAt: LocalDateTime
+    updatedAt: LocalDateTime
+    amount: BigDecimal
+    status: Int
+    currency: String
+    type: String
+    comment: String
+    version: Int
+}

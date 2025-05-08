@@ -38,6 +38,11 @@ The Kafka consumer consumers messages one by one.
   - ``SELECT * FROM databasechangelog ORDER BY dateexecuted DESC;`` -> to monitor when a change was executed
 
 # GraphQL
+  - chosen approach for reading data, because of its flexibility, it will allow the clients to query whatever data they need with minimal APIs being implemented, reducing the maintenance cost of the service
+  - if the schema changes, the service must be restarted
+  - Some of the types (BigDecimal, Long) etc are not supported by graphql so a dependency with extended scalars/types had to be added  
+  - LocalDateTime is not supported by Graphql so a custom scalar had to be made  
+  - https://.postman.co/workspace/Dimitar's-workspace~07e8dfe5-8799-4383-ba56-b42ebeca9ebc/collection/681c42965a0136145c0c7fe0?action=share&creator=4445641
 
 # Functional Monitoring 
   - KafkaUI -> useful for monitoring topics, messages, consumer offsets. Can also be used for resetting offsets, resetting topics etc.

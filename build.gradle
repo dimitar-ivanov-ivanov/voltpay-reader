@@ -72,6 +72,11 @@ dependencies {
 
 	// test container for Kafka
 	testImplementation("org.testcontainers:kafka:1.21.0")
+
+	// graphql dependencies
+	implementation('org.springframework.boot:spring-boot-starter-graphql:3.4.5')
+	// we need this one to use non-default types for graphql: big decimal, long, date time etc
+	implementation('com.graphql-java:graphql-java-extended-scalars:22.0')
 }
 
 tasks.named('test') {

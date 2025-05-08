@@ -1,5 +1,6 @@
 package com.voltpay.reader.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 public class Transaction {
 
     @Id
+    @JsonIgnore
     private String id;
 
     private LocalDateTime createdAt;
